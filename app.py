@@ -1,11 +1,12 @@
 import streamlit as st
 import pandas as pd
+import plotly.express as px
 
 st.set_page_config(
     page_title="LG생활건강 2025 손익구조 분석",
     page_icon="📊",
     layout="wide",
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="expanded"
 )
 
 # =========================================================
@@ -98,8 +99,54 @@ st.markdown(
             background: #FCFCFC;
             line-height: 1.75;
         }
-        button[data-baseweb="tab"] {
+        /* 왼쪽 내비게이션 */
+        section[data-testid="stSidebar"] {
+            border-right: 1px solid #E5E7EB;
+            background: #FAFAFA;
+        }
+        section[data-testid="stSidebar"] > div {
+            padding-top: 1.4rem;
+        }
+        .nav-brand {
+            font-size: 1.12rem;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            padding: 0.2rem 0 1rem 0;
+            border-bottom: 1px solid #E5E7EB;
+            margin-bottom: 1rem;
+        }
+        .nav-caption {
+            font-size: 0.75rem;
+            color: #9CA3AF;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            margin-bottom: 0.3rem;
+        }
+        section[data-testid="stSidebar"] div[role="radiogroup"] {
+            gap: 0.35rem;
+        }
+        section[data-testid="stSidebar"] label[data-baseweb="radio"] {
+            background: transparent;
+            border: 1px solid transparent;
+            border-radius: 10px;
+            padding: 0.6rem 0.7rem;
+            transition: all 0.15s ease;
+        }
+        section[data-testid="stSidebar"] label[data-baseweb="radio"]:hover {
+            background: #F3F4F6;
+            border-color: #E5E7EB;
+        }
+        section[data-testid="stSidebar"] label[data-baseweb="radio"]:has(input:checked) {
+            background: #FFFFFF;
+            border-color: #D1D5DB;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        section[data-testid="stSidebar"] label[data-baseweb="radio"] > div:first-child {
+            display: none;
+        }
+        section[data-testid="stSidebar"] label[data-baseweb="radio"] p {
             font-weight: 650;
+            font-size: 0.94rem;
         }
     </style>
     """,
@@ -171,109 +218,113 @@ impairment = pd.DataFrame({
 }).set_index("해외 CGU")
 
 # =========================================================
-# HEADER
+# LEFT NAVIGATION
 # =========================================================
-st.markdown('<div class="title">LG생활건강 2025 손익구조 분석</div>', unsafe_allow_html=True)
-st.markdown(
-    """
-    <div class="subtitle">
-        공개 재무제표만으로 확인 가능한 범위에서
-        <b>2025년 순손실 전환의 원인을 손익구조 → Beauty → 매출총이익률 → 손상 → 현금흐름</b>
-        순서로 분석합니다.
-    </div>
-    """,
-    unsafe_allow_html=True
-)
+with st.sidebar:
+    st.markdown('<div class="nav-caption">LG H&H FINANCE ANALYSIS</div>', unsafe_allow_html=True)
+    st.markdown('<div class="nav-brand">2025 손익구조 분석</div>', unsafe_allow_html=True)
 
-st.markdown(
-    """
-    <div class="question-box">
-        <div class="question-label">CORE QUESTION</div>
-        <div class="question-text">
-            LG생활건강은 2025년 왜 순손실로 전환했고,
-            그 손실을 어떻게 해석해야 하는가?
-        </div>
-    </div>
-    """,
-    unsafe_allow_html=True
-)
-
-tabs = st.tabs([
-    "개요",
-    "손익구조",
-    "Beauty 분석",
-    "매출총이익률",
-    "손상·해외사업",
-    "현금흐름",
-    "종합진단"
-])
+    page = st.radio(
+        "분석 메뉴",
+        [
+            "종합분석",
+            "손익구조",
+            "Beauty 분석",
+            "매출총이익률",
+            "손상·해외사업",
+            "현금흐름",
+            "종합진단"
+        ],
+        label_visibility="collapsed"
+    )
 
 # =========================================================
-# 1. OVERVIEW
+# 1. SUMMARY
 # =========================================================
-with tabs[0]:
-    st.header("분석 개요")
-
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        st.markdown(
-            """
-            <div class="card">
-                <div class="card-label">STEP 01</div>
-                <div class="card-title">본업 수익성</div>
-                <div class="card-body">
-                    영업이익이 왜 크게 감소했는지,
-                    사업부와 매출총이익 구조에서 확인합니다.
-                </div>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-    with c2:
-        st.markdown(
-            """
-            <div class="card">
-                <div class="card-label">STEP 02</div>
-                <div class="card-title">순손실 전환</div>
-                <div class="card-body">
-                    영업이익은 플러스인데 왜 세전손실과 순손실로 내려갔는지
-                    영업외손익과 손상차손을 확인합니다.
-                </div>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-    with c3:
-        st.markdown(
-            """
-            <div class="card">
-                <div class="card-label">STEP 03</div>
-                <div class="card-title">현금창출력</div>
-                <div class="card-body">
-                    회계상 손실과 실제 영업현금흐름이 동일한 방향인지
-                    구분해서 해석합니다.
-                </div>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-
+if page == "종합분석":
+    st.header("종합분석")
     st.markdown(
         """
-        <div class="insight">
-            <b>분석 원칙</b><br>
-            본 프로그램은 공개 재무제표에서 직접 확인 가능한 수치만을 사용합니다.
-            제품별 원가, 브랜드별 이익, 제품별 수율처럼 공개되지 않은 내부 데이터는 임의 추정하지 않습니다.
-            대신 공개자료만으로도 결론을 낼 수 있는 손익구조와 현금흐름 중심으로 분석합니다.
+        <div class="question-box">
+            <div class="question-label">CORE QUESTION</div>
+            <div class="question-text">
+                LG생활건강은 2025년 왜 순손실로 전환했고,
+                그 손실을 어떻게 해석해야 하는가?
+            </div>
         </div>
         """,
         unsafe_allow_html=True
     )
 
+    with st.expander("왜 이런 분석을 하나요?", expanded=True):
+        st.markdown(
+            """
+            LG생활건강은 2025년 연결 기준 **영업이익 1,707억원을 기록했음에도
+            당기순손실 858억원으로 전환**했습니다.
+
+            따라서 단순히 '실적이 나빠졌다'고 보는 것보다,
+            **① 본업의 수익성이 어디에서 약화됐는지,
+            ② 영업이익이 왜 순손실까지 내려갔는지,
+            ③ 회계상 손실이 실제 현금창출력 약화와 같은 의미인지**
+            순서대로 구분해 볼 필요가 있다고 판단했습니다.
+
+            이 분석은 공개 재무제표에서 직접 확인할 수 있는 수치를 중심으로
+            2025년 손익 악화의 구조를 설명하는 것을 목적으로 합니다.
+            """
+        )
+
+    with st.expander("어떤 흐름으로 분석하나요?", expanded=False):
+        st.markdown("#### ① 손익구조")
+        st.write("매출 → 매출총이익 → 영업이익 → 세전손익 → 당기순손익을 따라가며 어느 단계에서 수익성이 크게 훼손됐는지 확인합니다.")
+
+        st.markdown("#### ② Beauty 분석")
+        st.write("Beauty·HDB·Refreshment를 비교하여 전사 영업이익 감소를 주도한 사업부를 식별합니다.")
+
+        st.markdown("#### ③ 매출총이익률")
+        st.write("매출 감소와 함께 매출총이익률이 어떻게 변했는지 확인하고, 판관비 증가가 주된 원인이었는지도 검토합니다.")
+
+        st.markdown("#### ④ 손상·해외사업")
+        st.write("영업이익이 남아 있었는데도 순손실로 전환된 이유를 기타영업외손익과 무형자산 손상차손을 통해 확인합니다.")
+
+        st.markdown("#### ⑤ 현금흐름")
+        st.write("당기순손실과 영업활동현금흐름을 비교하여 회계상 손실과 현금창출력을 구분해서 해석합니다.")
+
+    with st.expander("어떤 결론이 도출되나요?", expanded=False):
+        st.markdown(
+            """
+            <div class="insight">
+                <b>1. 본업 수익성 악화의 중심은 Beauty입니다.</b><br>
+                Beauty가 2024년 영업이익 1,582억원에서
+                2025년 영업손실 976억원으로 적자 전환한 영향이 가장 컸습니다.
+            </div>
+
+            <div class="insight">
+                <b>2. 단순한 판관비 증가 문제는 아닙니다.</b><br>
+                2025년 판관비는 전년보다 감소했지만 매출총이익률은 약
+                52.3%에서 49.5%로 하락했습니다.
+                따라서 매출 감소와 총이익 창출력 약화를 함께 볼 필요가 있습니다.
+            </div>
+
+            <div class="insight">
+                <b>3. 순손실 전환에는 손상차손의 영향도 컸습니다.</b><br>
+                기타영업외비용 가운데 무형자산손상차손이 약 1,798억원으로
+                가장 큰 비중을 차지했습니다.
+            </div>
+
+            <div class="insight">
+                <b>4. 다만 현금창출력이 완전히 사라진 것은 아닙니다.</b><br>
+                2025년 당기순손실은 858억원이었지만
+                영업활동현금흐름은 +4,464억원을 유지했습니다.
+                다만 영업현금흐름 자체는 2년 연속 감소하고 있어 회복 여부를 계속 확인해야 합니다.
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
 # =========================================================
 # 2. INCOME STRUCTURE
 # =========================================================
-with tabs[1]:
+elif page == "손익구조":
     st.header("손익구조: 어디서 크게 꺾였나?")
     st.caption("연결 기준 / 단위: 억원")
 
@@ -316,7 +367,7 @@ with tabs[1]:
 # =========================================================
 # 3. BEAUTY
 # =========================================================
-with tabs[2]:
+elif page == "Beauty 분석":
     st.header("Beauty 분석: 전사 악화의 중심은 어디인가?")
     st.caption("연결 기준 / 단위: 억원")
 
@@ -365,7 +416,7 @@ with tabs[2]:
 # =========================================================
 # 4. GROSS MARGIN
 # =========================================================
-with tabs[3]:
+elif page == "매출총이익률":
     st.header("매출총이익률: 단순 매출 감소만의 문제인가?")
 
     st.subheader("매출총이익률 vs 판관비율")
@@ -401,15 +452,139 @@ with tabs[3]:
 # =========================================================
 # 5. IMPAIRMENT / GLOBAL
 # =========================================================
-with tabs[4]:
+elif page == "손상·해외사업":
     st.header("손상·해외사업: 영업이익이 남았는데 왜 순손실인가?")
 
     st.subheader("2025 손익 Bridge")
-    st.bar_chart(bridge)
+    bridge_plot = bridge.reset_index()
+
+    fig_bridge = px.bar(
+        bridge_plot,
+        x="항목",
+        y="2025",
+        text="2025",
+        labels={"2025": "금액(억원)", "항목": ""},
+    )
+    fig_bridge.update_traces(
+        texttemplate="%{text:,.0f}",
+        textposition="outside",
+        cliponaxis=False
+    )
+    fig_bridge.update_xaxes(
+        tickangle=0,
+        automargin=True
+    )
+    fig_bridge.update_yaxes(
+        zeroline=True,
+        zerolinewidth=1,
+        title="억원"
+    )
+    fig_bridge.update_layout(
+        showlegend=False,
+        height=430,
+        margin=dict(l=20, r=20, t=20, b=70)
+    )
+    st.plotly_chart(fig_bridge, use_container_width=True, config={"displayModeBar": True})
+
+    # 세부내역이 공시된 항목만 클릭해서 확인
+    with st.expander("기타영업외손익 세부내역 보기", expanded=False):
+        st.markdown(
+            """
+            2025년 기타영업외손익은 **기타영업외수익 약 457억원 - 기타영업외비용 약 2,799억원
+            = 순비용 약 2,342억원**으로 구성됩니다.
+
+            아래는 연결재무제표 주석에서 확인되는 **기타영업외비용 세부내역**입니다.
+            """
+        )
+
+        other_nonop_detail = pd.DataFrame({
+            "세부 항목": [
+                "무형자산손상차손",
+                "기부금",
+                "유형자산손상차손",
+                "기타",
+                "외환차손",
+                "무형자산처분손실",
+                "유형자산처분손실",
+                "사용권자산손상차손",
+                "기타의대손상각비",
+                "외화환산손실"
+            ],
+            "2025 금액(억원)": [
+                1798.31,
+                520.43,
+                125.58,
+                114.93,
+                121.13,
+                19.39,
+                46.76,
+                32.96,
+                11.67,
+                7.38
+            ]
+        })
+
+        st.dataframe(
+            other_nonop_detail.style.format({"2025 금액(억원)": "{:,.1f}"}),
+            use_container_width=True,
+            hide_index=True
+        )
+
+        fig_detail = px.bar(
+            other_nonop_detail.sort_values("2025 금액(억원)", ascending=True),
+            x="2025 금액(억원)",
+            y="세부 항목",
+            orientation="h",
+            text="2025 금액(억원)"
+        )
+        fig_detail.update_traces(
+            texttemplate="%{text:,.0f}",
+            textposition="outside",
+            cliponaxis=False
+        )
+        fig_detail.update_layout(
+            showlegend=False,
+            height=430,
+            margin=dict(l=20, r=40, t=10, b=20)
+        )
+        st.plotly_chart(fig_detail, use_container_width=True)
+
+        st.markdown(
+            """
+            <div class="insight">
+                <b>무엇이 가장 컸나?</b><br>
+                기타영업외비용 약 2,799억원 가운데
+                <b>무형자산손상차손이 약 1,798억원</b>으로 가장 큰 항목입니다.
+                즉 2025년 순손실 전환을 해석할 때 영업수익성 악화뿐 아니라
+                해외사업 등을 포함한 무형자산 가치의 재평가 영향을 함께 볼 필요가 있습니다.
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
     st.subheader("주요 해외 CGU 영업권 손상")
     st.caption("단위: 억원 / 반올림")
-    st.bar_chart(impairment)
+
+    impairment_plot = impairment.reset_index()
+    fig_impairment = px.bar(
+        impairment_plot,
+        x="해외 CGU",
+        y="2025 영업권 손상",
+        text="2025 영업권 손상",
+        labels={"2025 영업권 손상": "영업권 손상(억원)", "해외 CGU": ""}
+    )
+    fig_impairment.update_traces(
+        texttemplate="%{text:,.0f}",
+        textposition="outside",
+        cliponaxis=False
+    )
+    fig_impairment.update_xaxes(tickangle=0, automargin=True)
+    fig_impairment.update_layout(
+        showlegend=False,
+        height=400,
+        margin=dict(l=20, r=20, t=20, b=60)
+    )
+    st.plotly_chart(fig_impairment, use_container_width=True)
 
     c1, c2, c3 = st.columns(3)
     c1.metric("2025 영업이익", "1,707억원")
@@ -421,7 +596,7 @@ with tabs[4]:
         <div class="insight">
             <b>핵심 해석</b><br>
             2025년에는 영업이익이 플러스였지만 기타영업외비용이 크게 발생했고,
-            그 안에서 무형자산 손상차손의 영향이 컸습니다.
+            그 안에서 <b>무형자산손상차손</b>의 영향이 컸습니다.
             따라서 순손실 전환은 단순히 본업의 영업적자 때문이 아니라
             <b>본업 수익성 약화 + 과거 투자자산 가치 하락</b>이 함께 반영된 결과로 볼 수 있습니다.
         </div>
@@ -433,7 +608,7 @@ with tabs[4]:
         """
         <div class="insight">
             <b>Finance 관점</b><br>
-            영업권 손상은 당기의 현금유출 자체를 의미하지 않습니다.
+            손상차손은 당기의 현금유출 자체를 의미하지 않습니다.
             다만 과거 인수·투자 당시 기대했던 미래 현금창출력에 대한 재평가라는 점에서,
             해외사업이 투자 당시 기대한 경제적 성과를 내고 있는지 점검해야 한다는 신호로 볼 수 있습니다.
         </div>
@@ -444,7 +619,7 @@ with tabs[4]:
 # =========================================================
 # 6. CASH FLOW
 # =========================================================
-with tabs[5]:
+elif page == "현금흐름":
     st.header("현금흐름: 순손실이면 현금창출력도 무너졌나?")
 
     st.line_chart(cashflow)
@@ -475,7 +650,7 @@ with tabs[5]:
 # =========================================================
 # 7. FINAL
 # =========================================================
-with tabs[6]:
+elif page == "종합진단":
     st.header("종합진단")
 
     c1, c2, c3 = st.columns(3)
