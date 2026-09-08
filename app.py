@@ -217,6 +217,31 @@ impairment = pd.DataFrame({
     "2025 영업권 손상": [429, 170, 741, 84]
 }).set_index("해외 CGU")
 
+
+# 2026 H1 후속 분석 데이터
+h1_compare = pd.DataFrame({
+    "항목": ["매출", "매출총이익", "영업이익", "반기순이익"],
+    "2025 H1": [33027, 16839, 1972, 1420],
+    "2026 H1": [32340, 16750, 2106, 1664]
+}).set_index("항목")
+
+h1_segments = pd.DataFrame({
+    "사업": ["Beauty", "HDB", "Refreshment"],
+    "2025 H1 매출": [16671, 7596, 8760],
+    "2026 H1 매출": [15895, 7755, 8690],
+    "2025 H1 영업이익": [621, 456, 895],
+    "2026 H1 영업이익": [830, 478, 799],
+}).set_index("사업")
+
+h1_segments["2025 H1 영업이익률"] = h1_segments["2025 H1 영업이익"] / h1_segments["2025 H1 매출"] * 100
+h1_segments["2026 H1 영업이익률"] = h1_segments["2026 H1 영업이익"] / h1_segments["2026 H1 매출"] * 100
+
+h1_working_capital = pd.DataFrame({
+    "항목": ["매출채권 및 기타채권", "재고자산"],
+    "2025년 말": [5284, 8324],
+    "2026년 6월": [6938, 8827]
+}).set_index("항목")
+
 # =========================================================
 # LEFT NAVIGATION
 # =========================================================
@@ -233,6 +258,7 @@ with st.sidebar:
             "매출총이익률",
             "손상·해외사업",
             "현금흐름",
+            "2026 H1 · 이후 어떻게 되었나?",
             "종합진단"
         ],
         label_visibility="collapsed"
@@ -648,7 +674,137 @@ elif page == "현금흐름":
     )
 
 # =========================================================
-# 7. FINAL
+# 7. 2026 H1 FOLLOW-UP
+# =========================================================
+elif page == "2026 H1 · 이후 어떻게 되었나?":
+    st.header("2026 H1 · 이후 어떻게 되었나?")
+    st.markdown(
+        """
+        <div class="question-box">
+            <div class="question-label">FOLLOW-UP QUESTION</div>
+            <div class="question-text">
+                2025년 수익성 악화 이후, 2026년 상반기에는 실제 회복 신호가 나타났는가?
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    st.info(
+        "반기 실적은 연간 실적과 직접 비교하지 않고 2025 H1 ↔ 2026 H1 기준으로 비교합니다. "
+        "또한 2026년 사업부 재편성에 따라 회사가 2025년 비교기간의 부문정보를 재작성한 수치를 사용합니다."
+    )
+
+    st.subheader("1. 매출은 감소했지만 이익은 개선됐습니다")
+    c1, c2, c3, c4 = st.columns(4)
+    sales_change = (32340 / 33027 - 1) * 100
+    gp_change = (16750 / 16839 - 1) * 100
+    op_change = (2106 / 1972 - 1) * 100
+    ni_change = (1664 / 1420 - 1) * 100
+    c1.metric("매출", "3조 2,340억원", f"{sales_change:.1f}% YoY")
+    c2.metric("매출총이익", "1조 6,750억원", f"{gp_change:.1f}% YoY")
+    c3.metric("영업이익", "2,106억원", f"+{op_change:.1f}% YoY")
+    c4.metric("반기순이익", "1,664억원", f"+{ni_change:.1f}% YoY")
+
+    fig_h1 = px.bar(
+        h1_compare.reset_index().melt(id_vars="항목", value_vars=["2025 H1", "2026 H1"], var_name="기간", value_name="금액"),
+        x="항목", y="금액", color="기간", barmode="group", text_auto=".0f",
+        labels={"금액": "억원", "항목": ""}
+    )
+    fig_h1.update_xaxes(tickangle=0)
+    fig_h1.update_layout(height=420, margin=dict(l=20, r=20, t=20, b=50))
+    st.plotly_chart(fig_h1, use_container_width=True)
+
+    st.markdown(
+        """<div class="insight"><b>해석</b><br>
+        2026년 상반기 매출은 전년 동기보다 약 2.1% 감소했지만, 영업이익은 약 6.8%, 반기순이익은 약 17.1% 증가했습니다.
+        즉 외형 성장은 아직 회복되지 않았지만 <b>수익성 측면에서는 개선 신호가 나타났습니다.</b>
+        </div>""", unsafe_allow_html=True
+    )
+
+    st.subheader("2. 2025년 핵심 문제였던 Beauty는 수익성이 회복됐습니다")
+    beauty25_sales = h1_segments.loc["Beauty", "2025 H1 매출"]
+    beauty26_sales = h1_segments.loc["Beauty", "2026 H1 매출"]
+    beauty25_op = h1_segments.loc["Beauty", "2025 H1 영업이익"]
+    beauty26_op = h1_segments.loc["Beauty", "2026 H1 영업이익"]
+    beauty25_margin = h1_segments.loc["Beauty", "2025 H1 영업이익률"]
+    beauty26_margin = h1_segments.loc["Beauty", "2026 H1 영업이익률"]
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Beauty 매출", f"{beauty26_sales:,.0f}억원", f"{(beauty26_sales/beauty25_sales-1)*100:.1f}% YoY")
+    c2.metric("Beauty 영업이익", f"{beauty26_op:,.0f}억원", f"+{(beauty26_op/beauty25_op-1)*100:.1f}% YoY")
+    c3.metric("Beauty 영업이익률", f"{beauty26_margin:.1f}%", f"+{beauty26_margin-beauty25_margin:.1f}%p")
+
+    seg_plot = h1_segments[["2025 H1 영업이익", "2026 H1 영업이익"]].reset_index().melt(id_vars="사업", var_name="기간", value_name="영업이익")
+    fig_seg = px.bar(seg_plot, x="사업", y="영업이익", color="기간", barmode="group", text_auto=".0f", labels={"영업이익":"억원", "사업":""})
+    fig_seg.update_xaxes(tickangle=0)
+    fig_seg.update_layout(height=400, margin=dict(l=20, r=20, t=20, b=40))
+    st.plotly_chart(fig_seg, use_container_width=True)
+
+    st.markdown(
+        """<div class="insight"><b>Beauty의 변화</b><br>
+        Beauty 매출은 감소했지만 영업이익은 621억원에서 830억원으로 증가했고, 영업이익률도 약 3.7%에서 5.2%로 개선됐습니다.
+        따라서 2025년에 확인됐던 Beauty 수익성 악화에는 <b>2026년 상반기 기준으로 뚜렷한 회복 신호</b>가 나타났다고 볼 수 있습니다.
+        다만 매출 자체는 아직 감소하고 있어 '완전한 회복'으로 단정하기는 어렵습니다.
+        </div>""", unsafe_allow_html=True
+    )
+
+    st.subheader("3. 매출총이익률도 개선됐습니다")
+    gm_25h1 = 16839 / 33027 * 100
+    gm_26h1 = 16750 / 32340 * 100
+    c1, c2, c3 = st.columns(3)
+    c1.metric("2025 H1 매출총이익률", f"{gm_25h1:.1f}%")
+    c2.metric("2026 H1 매출총이익률", f"{gm_26h1:.1f}%", f"+{gm_26h1-gm_25h1:.1f}%p")
+    c3.metric("판관비", "1조 4,644억원", "-223억원 YoY")
+    st.markdown(
+        """<div class="insight"><b>비용을 무조건 줄여 만든 이익은 아닙니다.</b><br>
+        2026년 상반기 광고선전비는 전년 동기보다 증가한 반면 지급수수료는 감소했습니다.
+        따라서 마케팅 투자를 유지하면서 다른 비용구조의 효율화를 통해 수익성을 개선했을 가능성을 확인할 수 있습니다.
+        다만 지급수수료 감소의 구체적 원인은 공개자료만으로 확정하지 않습니다.
+        </div>""", unsafe_allow_html=True
+    )
+
+    st.subheader("4. 2025년 순손실을 키웠던 대규모 손상차손은 상반기에 나타나지 않았습니다")
+    c1, c2, c3 = st.columns(3)
+    c1.metric("2026 H1 영업이익", "2,106억원")
+    c2.metric("2026 H1 기타영업외비용", "293억원")
+    c3.metric("2026 H1 무형자산손상차손", "0억원")
+    st.markdown(
+        """<div class="insight"><b>의미</b><br>
+        2025년 순손실 전환에는 대규모 무형자산손상차손의 영향이 컸지만, 2026년 상반기에는 해당 손상차손이 발생하지 않았습니다.
+        그 결과 영업이익이 세전이익과 반기순이익으로 비교적 자연스럽게 이어졌습니다.
+        이는 2025년 순손실이 영업 자체의 구조적 손실만으로 발생한 것은 아니었다는 점을 다시 보여줍니다.
+        </div>""", unsafe_allow_html=True
+    )
+
+    st.subheader("5. 다만 운전자본은 계속 확인할 필요가 있습니다")
+    fig_wc = px.bar(
+        h1_working_capital.reset_index().melt(id_vars="항목", value_vars=["2025년 말", "2026년 6월"], var_name="시점", value_name="금액"),
+        x="항목", y="금액", color="시점", barmode="group", text_auto=".0f", labels={"금액":"억원", "항목":""}
+    )
+    fig_wc.update_xaxes(tickangle=0)
+    fig_wc.update_layout(height=390, margin=dict(l=20, r=20, t=20, b=40))
+    st.plotly_chart(fig_wc, use_container_width=True)
+    st.markdown(
+        """<div class="insight"><b>남아 있는 과제</b><br>
+        2025년 말 대비 2026년 6월 매출채권 및 기타채권과 재고자산이 모두 증가했습니다.
+        재고평가손실충당금은 오히려 감소했기 때문에 재고의 질이 악화됐다고 단정할 수는 없지만,
+        <b>수익성 개선이 운전자본 효율과 안정적인 현금창출력으로 이어지는지</b>는 계속 확인할 필요가 있습니다.
+        </div>""", unsafe_allow_html=True
+    )
+
+    st.markdown(
+        """<div class="final-box"><b>2026 H1 결론</b><br><br>
+        2026년 상반기 LG생활건강은 매출이 소폭 감소했음에도 Beauty의 영업이익과 전사 매출총이익률이 개선되고,
+        대규모 무형자산손상차손이 발생하지 않으면서 영업이익과 순이익이 모두 증가했습니다.<br><br>
+        따라서 <b>수익성 측면에서는 2025년의 충격에서 회복되는 신호가 나타났다</b>고 볼 수 있습니다.
+        다만 Beauty 매출의 외형 회복은 아직 확인되지 않았고 매출채권·재고도 증가했으므로,
+        향후에는 <b>Beauty 매출 성장 → 수익성 유지 → 운전자본 효율 → 영업현금흐름 개선</b>이 순차적으로 이어지는지를 확인하는 것이 중요합니다.
+        </div>""", unsafe_allow_html=True
+    )
+
+
+# =========================================================
+# 8. FINAL
 # =========================================================
 elif page == "종합진단":
     st.header("종합진단")
@@ -703,16 +859,16 @@ elif page == "종합진단":
         """
         <div class="final-box">
             <b>최종 결론</b><br><br>
-            2025년 LG생활건강의 실적 악화는 단순한 비용 증가 문제가 아닙니다.
-            Beauty 사업의 매출 감소와 함께 매출총이익률이 하락하면서 본업 수익성이 약화되었고,
-            여기에 해외사업 관련 무형자산 손상 등이 더해지며 순손실로 전환되었습니다.
+            2025년 LG생활건강의 실적 악화는 Beauty 사업의 수익성 약화와
+            대규모 무형자산 손상차손이 함께 작용한 결과였습니다.
             <br><br>
-            다만 영업활동현금흐름은 여전히 양(+)을 유지하고 있어,
-            회계상 손실이 곧 현금창출력 상실을 의미하지는 않습니다.
-            따라서 향후 회복을 판단할 때는
-            <b>① Beauty 매출과 영업이익 회복, ② 매출총이익률 개선,
-            ③ 해외사업 수익성 및 추가 손상 여부, ④ 영업현금흐름의 회복</b>
-            을 함께 확인할 필요가 있습니다.
+            2026년 상반기에는 Beauty 매출이 아직 감소했음에도 영업이익과 영업이익률이 개선되고,
+            전사 매출총이익률과 순이익도 회복됐으며 대규모 무형자산손상차손도 발생하지 않았습니다.
+            따라서 <b>수익성 측면에서는 회복 신호가 확인된다</b>고 판단할 수 있습니다.
+            <br><br>
+            다만 Beauty의 외형 성장과 운전자본 효율은 아직 추가 확인이 필요합니다.
+            향후에는 <b>① Beauty 매출 성장 여부, ② 수익성 유지,
+            ③ 매출채권·재고 관리, ④ 영업현금흐름 개선</b>이 함께 이어지는지를 확인하는 것이 중요합니다.
         </div>
         """,
         unsafe_allow_html=True
