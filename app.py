@@ -242,6 +242,42 @@ overseas_goodwill_impairment = {
 }
 
 
+# 기타영업외손익 세부내역: 연결 기준 / 단위 억원
+other_nonop_income = {
+    "2023": 465.82,
+    "2024": 263.95,
+    "2025": 456.97,
+}
+
+other_nonop_expense = {
+    "2023": pd.DataFrame({
+        "세부 항목": [
+            "무형자산손상차손", "기부금", "기타", "사용권자산손상차손",
+            "외환차손", "유형자산처분손실", "유형자산손상차손",
+            "무형자산처분손실", "외화환산손실", "투자부동산손상차손",
+            "투자부동산처분손실"
+        ],
+        "금액(억원)": [1122.05, 849.02, 255.10, 160.70, 112.06, 94.06, 65.55, 63.90, 16.76, 8.97, 0.11]
+    }),
+    "2024": pd.DataFrame({
+        "세부 항목": [
+            "무형자산손상차손", "기부금", "사용권자산손상차손", "외화환산손실",
+            "외환차손", "기타", "유형자산손상차손", "유형자산처분손실",
+            "무형자산처분손실", "투자부동산손상차손", "투자부동산처분손실"
+        ],
+        "금액(억원)": [934.40, 451.94, 220.67, 187.94, 126.90, 77.72, 71.84, 63.97, 13.17, 6.29, 0.00]
+    }),
+    "2025": pd.DataFrame({
+        "세부 항목": [
+            "무형자산손상차손", "기부금", "유형자산손상차손", "기타", "외환차손",
+            "무형자산처분손실", "유형자산처분손실", "사용권자산손상차손",
+            "기타의대손상각비", "외화환산손실"
+        ],
+        "금액(억원)": [1798.31, 520.43, 125.58, 114.93, 121.13, 19.39, 46.76, 32.96, 11.67, 7.38]
+    }),
+}
+
+
 # 2026 H1 후속 분석 데이터
 h1_compare = pd.DataFrame({
     "항목": ["매출", "매출총이익", "영업이익", "반기순이익"],
@@ -561,37 +597,70 @@ elif page == "손상·해외사업":
     fig_bridge.update_layout(showlegend=False, height=430, margin=dict(l=20, r=20, t=20, b=70))
     st.plotly_chart(fig_bridge, use_container_width=True, config={"displayModeBar": True})
 
-    if selected_year == "2025":
-        with st.expander("기타영업외손익 세부내역 보기", expanded=False):
+    with st.expander("기타영업외손익 세부내역 보기", expanded=False):
+        detail_df = other_nonop_expense[selected_year].copy()
+        expense_total = detail_df["금액(억원)"].sum()
+        income_total = other_nonop_income[selected_year]
+        net_nonop = income_total - expense_total
+
+        st.markdown(
+            f"""
+            {selected_year}년 기타영업외손익은 기타영업외수익 약 {income_total:,.0f}억원에서
+            기타영업외비용 약 {expense_total:,.0f}억원을 차감한
+            순손익 약 {net_nonop:,.0f}억원입니다.
+            아래 표는 연결재무제표 주석에서 확인되는 주요 기타영업외비용 항목입니다.
+            """
+        )
+
+        st.dataframe(
+            detail_df.style.format({"금액(억원)": "{:,.1f}"}),
+            use_container_width=True,
+            hide_index=True
+        )
+
+        fig_detail = px.bar(
+            detail_df.sort_values("금액(억원)", ascending=True),
+            x="금액(억원)",
+            y="세부 항목",
+            orientation="h",
+            text="금액(억원)"
+        )
+        fig_detail.update_traces(
+            texttemplate="%{text:,.0f}",
+            textposition="outside",
+            cliponaxis=False
+        )
+        fig_detail.update_layout(
+            showlegend=False,
+            height=430,
+            margin=dict(l=20, r=40, t=10, b=20)
+        )
+        st.plotly_chart(fig_detail, use_container_width=True)
+
+        if selected_year == "2023":
             st.markdown(
-                """
-                2025년 기타영업외손익은 기타영업외수익 약 457억원에서 기타영업외비용 약 2,799억원을 차감한
-                순비용 약 2,342억원으로 구성됩니다. 아래는 연결재무제표 주석에서 확인되는 주요 기타영업외비용입니다.
-                """
+                """<div class="insight">
+                2023년 기타영업외비용에서는 무형자산손상차손과 기부금의 비중이 컸습니다.
+                따라서 영업이익에서 세전이익으로 내려가는 과정에서 비영업 항목의 영향이 상당했음을 확인할 수 있습니다.
+                </div>""",
+                unsafe_allow_html=True
             )
-
-            other_nonop_detail = pd.DataFrame({
-                "세부 항목": [
-                    "무형자산손상차손", "기부금", "유형자산손상차손", "기타", "외환차손",
-                    "무형자산처분손실", "유형자산처분손실", "사용권자산손상차손", "기타의대손상각비", "외화환산손실"
-                ],
-                "2025 금액(억원)": [1798.31, 520.43, 125.58, 114.93, 121.13, 19.39, 46.76, 32.96, 11.67, 7.38]
-            })
-            st.dataframe(other_nonop_detail.style.format({"2025 금액(억원)": "{:,.1f}"}), use_container_width=True, hide_index=True)
-
-            fig_detail = px.bar(
-                other_nonop_detail.sort_values("2025 금액(억원)", ascending=True),
-                x="2025 금액(억원)", y="세부 항목", orientation="h", text="2025 금액(억원)"
-            )
-            fig_detail.update_traces(texttemplate="%{text:,.0f}", textposition="outside", cliponaxis=False)
-            fig_detail.update_layout(showlegend=False, height=430, margin=dict(l=20, r=40, t=10, b=20))
-            st.plotly_chart(fig_detail, use_container_width=True)
-
+        elif selected_year == "2024":
             st.markdown(
-                """<div class="insight"><b>무엇이 가장 컸나?</b><br>
-                기타영업외비용 약 2,799억원 가운데 무형자산손상차손이 약 1,798억원으로 가장 큰 항목입니다.
+                """<div class="insight">
+                2024년에도 무형자산손상차손이 기타영업외비용의 가장 큰 항목이었습니다.
+                다만 2025년과 달리 주요 해외 CGU의 신규 영업권 손상보다는
+                The Avon Company의 무형자산·사용권자산·유형자산 손상이 중심이었습니다.
+                </div>""",
+                unsafe_allow_html=True
+            )
+        else:
+            st.markdown(
+                """<div class="insight">
+                2025년 기타영업외비용 가운데 무형자산손상차손이 약 1,798억원으로 가장 큰 항목입니다.
                 따라서 2025년 순손실 전환은 본업 수익성 악화와 투자자산 가치 재평가를 함께 봐야 합니다.
-                </div>""", unsafe_allow_html=True
+                </div>""",
+                unsafe_allow_html=True
             )
 
     st.subheader(f"{selected_year} 주요 해외 CGU 영업권 손상")
@@ -653,6 +722,11 @@ elif page == "손상·해외사업":
 # =========================================================
 elif page == "현금흐름":
     st.header("이익의 질·현금흐름: 손익은 실제 현금창출력과 같은가?")
+
+    st.info(
+        "영업활동현금흐름은 연결 기준으로 공시되며 Beauty·HDB·Refreshment별 현금흐름은 별도로 공시되지 않습니다. "
+        "따라서 공개자료만으로 사업부별 영업활동현금흐름을 임의 배분하지 않고 전사 기준으로 분석합니다."
+    )
 
     st.markdown(
         """<div class="question-box">
@@ -758,6 +832,14 @@ elif page == "2026 H1 · 이후 어떻게 되었나?":
     fig_trend.update_xaxes(type="category", tickangle=0, title="")
     fig_trend.update_layout(height=420, margin=dict(l=20, r=20, t=20, b=40))
     st.plotly_chart(fig_trend, use_container_width=True)
+
+    st.info(
+        "2025 H1 → 2025 H2 → 2026 H1 흐름을 보면 매출과 매출총이익은 2025 H2에 한 차례 더 둔화된 뒤 "
+        "2026 H1에 일부 회복되는 모습이 나타납니다. 영업이익 역시 2025 H2에서 크게 약화된 후 "
+        "2026 H1에 반등해, 수익성 회복이 2026년 상반기에 본격적으로 나타났음을 확인할 수 있습니다. "
+        "다만 2025 H2는 FY2025에서 H1 실적을 차감한 산출치이므로 연말 결산 과정의 평가·추정 변경 등이 "
+        "포함될 수 있어 방향성 확인용으로 해석합니다."
+    )
 
     c1, c2, c3 = st.columns(3)
     h2 = half_trend.set_index("기간").loc["2025 H2 (산출)"]
