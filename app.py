@@ -217,6 +217,30 @@ impairment = pd.DataFrame({
     "2025 영업권 손상": [429, 170, 741, 84]
 }).set_index("해외 CGU")
 
+# 연도별 손익 Bridge 및 해외 CGU 영업권 손상 비교
+bridge_by_year = {
+    "2023": pd.DataFrame({
+        "항목": ["영업이익", "금융손익", "기타영업외손익", "지분법손익", "세전손익", "법인세", "당기순손익"],
+        "금액": [4870, 99, -2282, 77, 2764, -1129, 1635]
+    }),
+    "2024": pd.DataFrame({
+        "항목": ["영업이익", "금융손익", "기타영업외손익", "지분법손익", "세전손익", "법인세", "당기순손익"],
+        "금액": [4590, 409, -1891, 58, 3166, -1127, 2039]
+    }),
+    "2025": bridge.reset_index().rename(columns={"2025": "금액"})
+}
+
+overseas_goodwill_impairment = {
+    "2023": pd.DataFrame({
+        "해외 CGU": ["The Avon Company Canada", "Boinca"],
+        "영업권 손상": [141, 565]
+    }),
+    # 2024년 해외 CGU에서 신규 영업권 손상은 확인되지 않음.
+    # The Avon Company의 997억원 손상은 무형자산·사용권자산·유형자산 손상으로 영업권 손상이 아님.
+    "2024": pd.DataFrame(columns=["해외 CGU", "영업권 손상"]),
+    "2025": impairment.reset_index().rename(columns={"2025 영업권 손상": "영업권 손상"})
+}
+
 
 # 2026 H1 후속 분석 데이터
 h1_compare = pd.DataFrame({
@@ -241,6 +265,22 @@ h1_working_capital = pd.DataFrame({
     "2025년 말": [5284, 8324],
     "2026년 6월": [6938, 8827]
 }).set_index("항목")
+
+# 2025 H2는 FY2025 - H1 2025로 산출한 보조 분석값
+half_trend = pd.DataFrame({
+    "기간": ["2025 H1", "2025 H2 (산출)", "2026 H1"],
+    "매출": [33027, 63555 - 33027, 32340],
+    "매출총이익": [16839, 31446 - 16839, 16750],
+    "영업이익": [1972, 1707 - 1972, 2106]
+})
+half_trend["매출총이익률"] = half_trend["매출총이익"] / half_trend["매출"] * 100
+
+profit_quality = pd.DataFrame({
+    "연도": [2023, 2024, 2025],
+    "영업이익": [4870, 4590, 1707],
+    "당기순손익": [1635, 2039, -858],
+    "영업활동현금흐름": [6591, 5276, 4464]
+})
 
 # =========================================================
 # LEFT NAVIGATION
@@ -285,13 +325,13 @@ if page == "종합분석":
     with st.expander("왜 이런 분석을 하나요?", expanded=True):
         st.markdown(
             """
-            LG생활건강은 2025년 연결 기준 **영업이익 1,707억원을 기록했음에도
-            당기순손실 858억원으로 전환**했습니다.
+            LG생활건강은 2025년 연결 기준 영업이익 1,707억원을 기록했음에도
+            당기순손실 858억원으로 전환했습니다.
 
             따라서 단순히 '실적이 나빠졌다'고 보는 것보다,
-            **① 본업의 수익성이 어디에서 약화됐는지,
+            ① 본업의 수익성이 어디에서 약화됐는지,
             ② 영업이익이 왜 순손실까지 내려갔는지,
-            ③ 회계상 손실이 실제 현금창출력 약화와 같은 의미인지**
+            ③ 회계상 손실이 실제 현금창출력 약화와 같은 의미인지
             순서대로 구분해 볼 필요가 있다고 판단했습니다.
 
             이 분석은 공개 재무제표에서 직접 확인할 수 있는 수치를 중심으로
@@ -360,7 +400,13 @@ elif page == "손익구조":
     )
 
     st.subheader("2023~2025 손익 주요 항목")
-    st.line_chart(income.T)
+    income_plot = income.T.reset_index().rename(columns={"index": "연도"}).melt(
+        id_vars="연도", var_name="항목", value_name="금액"
+    )
+    fig_income = px.line(income_plot, x="연도", y="금액", color="항목", markers=True, labels={"금액": "억원"})
+    fig_income.update_xaxes(type="category", tickangle=0, title="")
+    fig_income.update_layout(height=430, margin=dict(l=20, r=20, t=20, b=40))
+    st.plotly_chart(fig_income, use_container_width=True)
 
     sales_24 = income.loc["매출", "2024"]
     sales_25 = income.loc["매출", "2025"]
@@ -401,10 +447,18 @@ elif page == "Beauty 분석":
     op_pivot = segment.pivot(index="연도", columns="사업", values="영업이익")
 
     st.subheader("사업부별 매출")
-    st.line_chart(sales_pivot)
+    sales_plot = sales_pivot.reset_index().melt(id_vars="연도", var_name="사업", value_name="매출")
+    fig_sales = px.line(sales_plot, x="연도", y="매출", color="사업", markers=True, labels={"매출": "억원"})
+    fig_sales.update_xaxes(type="category", tickangle=0, title="")
+    fig_sales.update_layout(height=410, margin=dict(l=20, r=20, t=20, b=40))
+    st.plotly_chart(fig_sales, use_container_width=True)
 
     st.subheader("사업부별 영업이익")
-    st.bar_chart(op_pivot)
+    op_plot = op_pivot.reset_index().melt(id_vars="연도", var_name="사업", value_name="영업이익")
+    fig_op = px.bar(op_plot, x="연도", y="영업이익", color="사업", barmode="group", text_auto=".0f", labels={"영업이익": "억원"})
+    fig_op.update_xaxes(type="category", tickangle=0, title="")
+    fig_op.update_layout(height=410, margin=dict(l=20, r=20, t=20, b=40))
+    st.plotly_chart(fig_op, use_container_width=True)
 
     beauty_24 = segment[(segment["연도"] == 2024) & (segment["사업"] == "Beauty")].iloc[0]
     beauty_25 = segment[(segment["연도"] == 2025) & (segment["사업"] == "Beauty")].iloc[0]
@@ -446,7 +500,11 @@ elif page == "매출총이익률":
     st.header("매출총이익률: 단순 매출 감소만의 문제인가?")
 
     st.subheader("매출총이익률 vs 판관비율")
-    st.line_chart(gross_margin)
+    gm_plot = gross_margin.reset_index().melt(id_vars="연도", var_name="지표", value_name="비율")
+    fig_gm = px.line(gm_plot, x="연도", y="비율", color="지표", markers=True, labels={"비율": "%"})
+    fig_gm.update_xaxes(type="category", tickangle=0, title="")
+    fig_gm.update_layout(height=410, margin=dict(l=20, r=20, t=20, b=40))
+    st.plotly_chart(fig_gm, use_container_width=True)
 
     gm_24 = gross_margin.loc[2024, "매출총이익률"]
     gm_25 = gross_margin.loc[2025, "매출총이익률"]
@@ -481,199 +539,166 @@ elif page == "매출총이익률":
 elif page == "손상·해외사업":
     st.header("손상·해외사업: 영업이익이 남았는데 왜 순손실인가?")
 
-    st.subheader("2025 손익 Bridge")
-    bridge_plot = bridge.reset_index()
+    st.subheader("연도별 비교분석")
+    st.caption("2023~2025년 손익 Bridge와 주요 해외 CGU 영업권 손상을 같은 기준으로 비교합니다.")
 
+    selected_year = st.radio(
+        "비교 연도",
+        ["2025", "2024", "2023"],
+        horizontal=True,
+        format_func=lambda x: f"{x}년 비교분석"
+    )
+
+    st.subheader(f"{selected_year} 손익 Bridge")
+    year_bridge = bridge_by_year[selected_year].copy()
     fig_bridge = px.bar(
-        bridge_plot,
-        x="항목",
-        y="2025",
-        text="2025",
-        labels={"2025": "금액(억원)", "항목": ""},
+        year_bridge, x="항목", y="금액", text="금액",
+        labels={"금액": "금액(억원)", "항목": ""}
     )
-    fig_bridge.update_traces(
-        texttemplate="%{text:,.0f}",
-        textposition="outside",
-        cliponaxis=False
-    )
-    fig_bridge.update_xaxes(
-        tickangle=0,
-        automargin=True
-    )
-    fig_bridge.update_yaxes(
-        zeroline=True,
-        zerolinewidth=1,
-        title="억원"
-    )
-    fig_bridge.update_layout(
-        showlegend=False,
-        height=430,
-        margin=dict(l=20, r=20, t=20, b=70)
-    )
+    fig_bridge.update_traces(texttemplate="%{text:,.0f}", textposition="outside", cliponaxis=False)
+    fig_bridge.update_xaxes(tickangle=0, automargin=True)
+    fig_bridge.update_yaxes(zeroline=True, zerolinewidth=1, title="억원")
+    fig_bridge.update_layout(showlegend=False, height=430, margin=dict(l=20, r=20, t=20, b=70))
     st.plotly_chart(fig_bridge, use_container_width=True, config={"displayModeBar": True})
 
-    # 세부내역이 공시된 항목만 클릭해서 확인
-    with st.expander("기타영업외손익 세부내역 보기", expanded=False):
-        st.markdown(
-            """
-            2025년 기타영업외손익은 **기타영업외수익 약 457억원 - 기타영업외비용 약 2,799억원
-            = 순비용 약 2,342억원**으로 구성됩니다.
+    if selected_year == "2025":
+        with st.expander("기타영업외손익 세부내역 보기", expanded=False):
+            st.markdown(
+                """
+                2025년 기타영업외손익은 기타영업외수익 약 457억원에서 기타영업외비용 약 2,799억원을 차감한
+                순비용 약 2,342억원으로 구성됩니다. 아래는 연결재무제표 주석에서 확인되는 주요 기타영업외비용입니다.
+                """
+            )
 
-            아래는 연결재무제표 주석에서 확인되는 **기타영업외비용 세부내역**입니다.
-            """
-        )
+            other_nonop_detail = pd.DataFrame({
+                "세부 항목": [
+                    "무형자산손상차손", "기부금", "유형자산손상차손", "기타", "외환차손",
+                    "무형자산처분손실", "유형자산처분손실", "사용권자산손상차손", "기타의대손상각비", "외화환산손실"
+                ],
+                "2025 금액(억원)": [1798.31, 520.43, 125.58, 114.93, 121.13, 19.39, 46.76, 32.96, 11.67, 7.38]
+            })
+            st.dataframe(other_nonop_detail.style.format({"2025 금액(억원)": "{:,.1f}"}), use_container_width=True, hide_index=True)
 
-        other_nonop_detail = pd.DataFrame({
-            "세부 항목": [
-                "무형자산손상차손",
-                "기부금",
-                "유형자산손상차손",
-                "기타",
-                "외환차손",
-                "무형자산처분손실",
-                "유형자산처분손실",
-                "사용권자산손상차손",
-                "기타의대손상각비",
-                "외화환산손실"
-            ],
-            "2025 금액(억원)": [
-                1798.31,
-                520.43,
-                125.58,
-                114.93,
-                121.13,
-                19.39,
-                46.76,
-                32.96,
-                11.67,
-                7.38
-            ]
-        })
+            fig_detail = px.bar(
+                other_nonop_detail.sort_values("2025 금액(억원)", ascending=True),
+                x="2025 금액(억원)", y="세부 항목", orientation="h", text="2025 금액(억원)"
+            )
+            fig_detail.update_traces(texttemplate="%{text:,.0f}", textposition="outside", cliponaxis=False)
+            fig_detail.update_layout(showlegend=False, height=430, margin=dict(l=20, r=40, t=10, b=20))
+            st.plotly_chart(fig_detail, use_container_width=True)
 
-        st.dataframe(
-            other_nonop_detail.style.format({"2025 금액(억원)": "{:,.1f}"}),
-            use_container_width=True,
-            hide_index=True
-        )
+            st.markdown(
+                """<div class="insight"><b>무엇이 가장 컸나?</b><br>
+                기타영업외비용 약 2,799억원 가운데 무형자산손상차손이 약 1,798억원으로 가장 큰 항목입니다.
+                따라서 2025년 순손실 전환은 본업 수익성 악화와 투자자산 가치 재평가를 함께 봐야 합니다.
+                </div>""", unsafe_allow_html=True
+            )
 
-        fig_detail = px.bar(
-            other_nonop_detail.sort_values("2025 금액(억원)", ascending=True),
-            x="2025 금액(억원)",
-            y="세부 항목",
-            orientation="h",
-            text="2025 금액(억원)"
-        )
-        fig_detail.update_traces(
-            texttemplate="%{text:,.0f}",
-            textposition="outside",
-            cliponaxis=False
-        )
-        fig_detail.update_layout(
-            showlegend=False,
-            height=430,
-            margin=dict(l=20, r=40, t=10, b=20)
-        )
-        st.plotly_chart(fig_detail, use_container_width=True)
-
-        st.markdown(
-            """
-            <div class="insight">
-                <b>무엇이 가장 컸나?</b><br>
-                기타영업외비용 약 2,799억원 가운데
-                <b>무형자산손상차손이 약 1,798억원</b>으로 가장 큰 항목입니다.
-                즉 2025년 순손실 전환을 해석할 때 영업수익성 악화뿐 아니라
-                해외사업 등을 포함한 무형자산 가치의 재평가 영향을 함께 볼 필요가 있습니다.
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-
-    st.subheader("주요 해외 CGU 영업권 손상")
+    st.subheader(f"{selected_year} 주요 해외 CGU 영업권 손상")
     st.caption("단위: 억원 / 반올림")
+    year_imp = overseas_goodwill_impairment[selected_year].copy()
 
-    impairment_plot = impairment.reset_index()
-    fig_impairment = px.bar(
-        impairment_plot,
-        x="해외 CGU",
-        y="2025 영업권 손상",
-        text="2025 영업권 손상",
-        labels={"2025 영업권 손상": "영업권 손상(억원)", "해외 CGU": ""}
-    )
-    fig_impairment.update_traces(
-        texttemplate="%{text:,.0f}",
-        textposition="outside",
-        cliponaxis=False
-    )
-    fig_impairment.update_xaxes(tickangle=0, automargin=True)
-    fig_impairment.update_layout(
-        showlegend=False,
-        height=400,
-        margin=dict(l=20, r=20, t=20, b=60)
-    )
-    st.plotly_chart(fig_impairment, use_container_width=True)
+    if year_imp.empty:
+        st.info(
+            "2024년에는 주요 해외 CGU에서 신규 영업권 손상이 확인되지 않았습니다. "
+            "다만 The Avon Company에서는 무형자산·사용권자산·유형자산에 총 약 997억원의 손상이 인식됐으며, "
+            "이는 영업권 손상과 구분해 해석해야 합니다."
+        )
+    else:
+        fig_impairment = px.bar(
+            year_imp, x="해외 CGU", y="영업권 손상", text="영업권 손상",
+            labels={"영업권 손상": "영업권 손상(억원)", "해외 CGU": ""}
+        )
+        fig_impairment.update_traces(texttemplate="%{text:,.0f}", textposition="outside", cliponaxis=False)
+        fig_impairment.update_xaxes(tickangle=0, automargin=True)
+        fig_impairment.update_layout(showlegend=False, height=400, margin=dict(l=20, r=20, t=20, b=60))
+        st.plotly_chart(fig_impairment, use_container_width=True)
 
-    c1, c2, c3 = st.columns(3)
-    c1.metric("2025 영업이익", "1,707억원")
-    c2.metric("기타영업외비용", "2,799억원")
-    c3.metric("무형자산손상차손", "1,798억원")
+    if selected_year == "2023":
+        st.markdown(
+            """<div class="insight"><b>2023년 해석</b><br>
+            The Avon Company Canada와 Boinca에서 영업권 손상이 발생했습니다.
+            The Avon Company도 추가 손상차손을 인식했지만, 영업권은 이전 기간에 이미 전액 손상돼
+            2023년 추가 손상은 영업권 손상으로 분류하지 않았습니다.
+            </div>""", unsafe_allow_html=True
+        )
+    elif selected_year == "2024":
+        st.markdown(
+            """<div class="insight"><b>2024년 해석</b><br>
+            해외 CGU의 신규 영업권 손상은 확인되지 않았지만 The Avon Company의 다른 자산 손상은 계속됐습니다.
+            즉 해외사업 리스크가 사라졌다기보다 손상의 대상 자산이 달랐다고 보는 것이 적절합니다.
+            </div>""", unsafe_allow_html=True
+        )
+    else:
+        c1, c2, c3 = st.columns(3)
+        c1.metric("2025 영업이익", "1,707억원")
+        c2.metric("기타영업외비용", "2,799억원")
+        c3.metric("무형자산손상차손", "1,798억원")
+        st.markdown(
+            """<div class="insight"><b>핵심 해석</b><br>
+            2025년에는 영업이익이 플러스였지만 기타영업외비용이 크게 발생했고, 그 안에서 무형자산손상차손의 영향이 컸습니다.
+            순손실 전환은 본업 수익성 약화와 과거 투자자산 가치 하락이 함께 반영된 결과로 볼 수 있습니다.
+            </div>""", unsafe_allow_html=True
+        )
 
     st.markdown(
-        """
-        <div class="insight">
-            <b>핵심 해석</b><br>
-            2025년에는 영업이익이 플러스였지만 기타영업외비용이 크게 발생했고,
-            그 안에서 <b>무형자산손상차손</b>의 영향이 컸습니다.
-            따라서 순손실 전환은 단순히 본업의 영업적자 때문이 아니라
-            <b>본업 수익성 약화 + 과거 투자자산 가치 하락</b>이 함께 반영된 결과로 볼 수 있습니다.
-        </div>
-        """,
-        unsafe_allow_html=True
+        """<div class="insight"><b>Finance 관점</b><br>
+        손상차손은 당기의 현금유출 자체를 의미하지 않습니다.
+        다만 과거 인수·투자 당시 기대했던 미래 현금창출력을 재평가한 결과이므로,
+        해외사업의 사업계획 대비 실제 매출·이익·현금흐름을 지속적으로 검증할 필요가 있습니다.
+        </div>""", unsafe_allow_html=True
     )
 
-    st.markdown(
-        """
-        <div class="insight">
-            <b>Finance 관점</b><br>
-            손상차손은 당기의 현금유출 자체를 의미하지 않습니다.
-            다만 과거 인수·투자 당시 기대했던 미래 현금창출력에 대한 재평가라는 점에서,
-            해외사업이 투자 당시 기대한 경제적 성과를 내고 있는지 점검해야 한다는 신호로 볼 수 있습니다.
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-# =========================================================
 # 6. CASH FLOW
 # =========================================================
 elif page == "현금흐름":
-    st.header("현금흐름: 순손실이면 현금창출력도 무너졌나?")
-
-    st.line_chart(cashflow)
-
-    c1, c2, c3 = st.columns(3)
-    c1.metric("2023 영업CF", "6,591억원")
-    c2.metric("2024 영업CF", "5,276억원", "-1,315억원")
-    c3.metric("2025 영업CF", "4,464억원", "-812억원")
+    st.header("이익의 질·현금흐름: 손익은 실제 현금창출력과 같은가?")
 
     st.markdown(
-        """
-        <div class="insight">
-            <b>핵심 해석</b><br>
-            2025년 당기순손실은 858억원이었지만 영업활동현금흐름은 +4,464억원이었습니다.
-            이는 손상차손, 감가상각비 등 비현금성 비용이 손익에는 반영되지만
-            당기 현금유출과 동일하지 않기 때문입니다.
-            따라서 <b>회계상 손실과 실제 영업현금창출력은 구분해서 해석해야 합니다.</b>
-        </div>
-        """,
-        unsafe_allow_html=True
+        """<div class="question-box">
+            <div class="question-label">QUALITY OF EARNINGS</div>
+            <div class="question-text">손익계산서상 이익 변화가 실제 영업현금창출력 변화와 어떻게 다른가?</div>
+        </div>""", unsafe_allow_html=True
+    )
+
+    pq = profit_quality.melt(id_vars="연도", var_name="지표", value_name="금액")
+    fig_pq = px.line(pq, x="연도", y="금액", color="지표", markers=True, labels={"금액": "억원"})
+    fig_pq.update_xaxes(type="category", tickangle=0, title="")
+    fig_pq.update_layout(height=430, margin=dict(l=20, r=20, t=20, b=40))
+    st.plotly_chart(fig_pq, use_container_width=True)
+
+    c1, c2, c3 = st.columns(3)
+    c1.metric("2025 영업이익", "1,707억원", "-2,883억원 YoY")
+    c2.metric("2025 당기순손익", "-858억원", "적자전환")
+    c3.metric("2025 영업활동현금흐름", "4,464억원", "-812억원 YoY")
+
+    st.subheader("2025년: 영업이익 → 순손실 → 영업현금흐름")
+    quality_2025 = pd.DataFrame({
+        "구분": ["영업이익", "세전손익", "당기순손익", "영업활동현금흐름"],
+        "금액": [1707, -633, -858, 4464]
+    })
+    fig_q25 = px.bar(quality_2025, x="구분", y="금액", text="금액", labels={"금액": "억원", "구분": ""})
+    fig_q25.update_traces(texttemplate="%{text:,.0f}", textposition="outside", cliponaxis=False)
+    fig_q25.update_xaxes(tickangle=0)
+    fig_q25.update_yaxes(zeroline=True, zerolinewidth=1)
+    fig_q25.update_layout(showlegend=False, height=400, margin=dict(l=20, r=20, t=20, b=50))
+    st.plotly_chart(fig_q25, use_container_width=True)
+
+    st.markdown(
+        """<div class="insight"><b>핵심 해석</b><br>
+        2025년에는 영업이익 1,707억원을 냈지만 세전손실 633억원, 당기순손실 858억원으로 내려갔습니다.
+        반면 영업활동현금흐름은 +4,464억원을 유지했습니다.
+        이는 순손실이 본업의 현금유출과 동일한 의미가 아니라는 점을 보여줍니다.
+        특히 무형자산손상차손 1,798억원은 이 차이를 설명하는 주요 비현금성 항목 중 하나입니다.
+        다만 순이익과 영업현금흐름의 차이는 손상차손 하나만이 아니라 감가상각·상각, 운전자본 변동, 세금 등 여러 항목의 영향을 함께 받습니다.
+        </div>""", unsafe_allow_html=True
     )
 
     st.warning(
-        "다만 영업활동현금흐름은 2023 → 2024 → 2025로 2년 연속 감소했습니다. "
-        "따라서 '현금은 문제없다'가 아니라, 여전히 양(+)이지만 현금창출력도 약화 추세라는 해석이 적절합니다."
+        "영업활동현금흐름은 2023년 6,591억원 → 2024년 5,276억원 → 2025년 4,464억원으로 2년 연속 감소했습니다. "
+        "따라서 '순손실이지만 현금은 문제없다'가 아니라, 회계상 손실보다 현금창출력은 양호했지만 본업의 현금창출 규모도 약화되고 있다는 해석이 적절합니다."
     )
 
-# =========================================================
 # 7. 2026 H1 FOLLOW-UP
 # =========================================================
 elif page == "2026 H1 · 이후 어떻게 되었나?":
@@ -691,8 +716,9 @@ elif page == "2026 H1 · 이후 어떻게 되었나?":
     )
 
     st.info(
-        "반기 실적은 연간 실적과 직접 비교하지 않고 2025 H1 ↔ 2026 H1 기준으로 비교합니다. "
-        "또한 2026년 사업부 재편성에 따라 회사가 2025년 비교기간의 부문정보를 재작성한 수치를 사용합니다."
+        "회복 여부의 핵심 판단은 계절성을 통제하기 위해 2025 H1 ↔ 2026 H1 전년 동기 기준으로 비교합니다. "
+        "다만 변화의 흐름을 놓치지 않기 위해 FY2025에서 H1 실적을 차감한 2025 H2 산출치도 보조적으로 확인합니다. "
+        "2025 H2는 별도 공시된 반기 실적이 아니며 연말 결산 과정의 평가·추정 변경 등이 포함될 수 있어, 본 분석에서는 매출·매출총이익·영업이익 등 영업 추세 확인에만 사용합니다."
     )
 
     st.subheader("1. 매출은 감소했지만 이익은 개선됐습니다")
@@ -718,8 +744,29 @@ elif page == "2026 H1 · 이후 어떻게 되었나?":
     st.markdown(
         """<div class="insight"><b>해석</b><br>
         2026년 상반기 매출은 전년 동기보다 약 2.1% 감소했지만, 영업이익은 약 6.8%, 반기순이익은 약 17.1% 증가했습니다.
-        즉 외형 성장은 아직 회복되지 않았지만 <b>수익성 측면에서는 개선 신호가 나타났습니다.</b>
+        즉 외형 성장은 아직 회복되지 않았지만 수익성 측면에서는 개선 신호가 나타났습니다.
         </div>""", unsafe_allow_html=True
+    )
+
+    st.subheader("1-1. 2025 H2를 포함하면 회복의 흐름이 더 선명해집니다")
+    trend_long = half_trend.melt(
+        id_vars=["기간", "매출총이익률"],
+        value_vars=["매출", "매출총이익", "영업이익"],
+        var_name="지표", value_name="금액"
+    )
+    fig_trend = px.line(trend_long, x="기간", y="금액", color="지표", markers=True, labels={"금액": "억원"})
+    fig_trend.update_xaxes(type="category", tickangle=0, title="")
+    fig_trend.update_layout(height=420, margin=dict(l=20, r=20, t=20, b=40))
+    st.plotly_chart(fig_trend, use_container_width=True)
+
+    c1, c2, c3 = st.columns(3)
+    h2 = half_trend.set_index("기간").loc["2025 H2 (산출)"]
+    c1.metric("2025 H2 산출 매출", f"{h2['매출']:,.0f}억원")
+    c2.metric("2025 H2 산출 영업이익", f"{h2['영업이익']:,.0f}억원")
+    c3.metric("2025 H2 산출 매출총이익률", f"{h2['매출총이익률']:.1f}%")
+
+    st.caption(
+        "2025 H2 = FY2025 - H1 2025 산출값입니다. 별도 공시 반기 실적이 아니므로 순이익·세전손익 비교에는 사용하지 않고, 영업 추세를 보조적으로 확인하는 용도로만 활용합니다."
     )
 
     st.subheader("2. 2025년 핵심 문제였던 Beauty는 수익성이 회복됐습니다")
@@ -763,16 +810,26 @@ elif page == "2026 H1 · 이후 어떻게 되었나?":
         </div>""", unsafe_allow_html=True
     )
 
-    st.subheader("4. 2025년 순손실을 키웠던 대규모 손상차손은 상반기에 나타나지 않았습니다")
-    c1, c2, c3 = st.columns(3)
-    c1.metric("2026 H1 영업이익", "2,106억원")
-    c2.metric("2026 H1 기타영업외비용", "293억원")
-    c3.metric("2026 H1 무형자산손상차손", "0억원")
+    st.subheader("4. 손상차손은 상반기만으로 회복 여부를 판단할 수 없습니다")
+    impairment_timing = pd.DataFrame({
+        "시점": ["2025 Q1", "2025 H1", "2025 Q3", "2025 FY", "2026 H1"],
+        "무형자산손상차손": [0, 0, 0, 1798, 0]
+    })
+    fig_imp_timing = px.bar(
+        impairment_timing, x="시점", y="무형자산손상차손", text="무형자산손상차손",
+        labels={"무형자산손상차손": "억원", "시점": ""}
+    )
+    fig_imp_timing.update_traces(texttemplate="%{text:,.0f}", textposition="outside", cliponaxis=False)
+    fig_imp_timing.update_xaxes(tickangle=0)
+    fig_imp_timing.update_layout(showlegend=False, height=380, margin=dict(l=20, r=20, t=20, b=40))
+    st.plotly_chart(fig_imp_timing, use_container_width=True)
+
     st.markdown(
-        """<div class="insight"><b>의미</b><br>
-        2025년 순손실 전환에는 대규모 무형자산손상차손의 영향이 컸지만, 2026년 상반기에는 해당 손상차손이 발생하지 않았습니다.
-        그 결과 영업이익이 세전이익과 반기순이익으로 비교적 자연스럽게 이어졌습니다.
-        이는 2025년 순손실이 영업 자체의 구조적 손실만으로 발생한 것은 아니었다는 점을 다시 보여줍니다.
+        """<div class="insight"><b>해석</b><br>
+        2025년에도 Q1·H1·Q3까지 무형자산손상차손이 없었고, 대규모 손상은 연말 결산에서 인식됐습니다.
+        따라서 2026 H1의 손상차손 0원만으로 해외 투자자산 가치가 회복됐다고 판단할 수 없습니다.
+        손상 여부는 2026년 연말 정기 손상검사와 향후 사업 전망을 추가 확인해야 합니다.
+        2026 H1의 실제 회복 근거는 손상차손 부재가 아니라 Beauty 영업이익·영업이익률과 전사 매출총이익률 개선입니다.
         </div>""", unsafe_allow_html=True
     )
 
@@ -794,9 +851,9 @@ elif page == "2026 H1 · 이후 어떻게 되었나?":
 
     st.markdown(
         """<div class="final-box"><b>2026 H1 결론</b><br><br>
-        2026년 상반기 LG생활건강은 매출이 소폭 감소했음에도 Beauty의 영업이익과 전사 매출총이익률이 개선되고,
-        대규모 무형자산손상차손이 발생하지 않으면서 영업이익과 순이익이 모두 증가했습니다.<br><br>
-        따라서 <b>수익성 측면에서는 2025년의 충격에서 회복되는 신호가 나타났다</b>고 볼 수 있습니다.
+        2026년 상반기 LG생활건강은 매출이 소폭 감소했음에도 Beauty의 영업이익과 전사 매출총이익률이 개선되며
+        본업 수익성 측면에서 회복 신호가 나타났습니다.<br><br>
+        다만 손상차손은 2025년에도 연말에 집중 인식됐으므로, 2026 H1의 손상차손 0원만으로 해외 투자자산 리스크가 해소됐다고 판단할 수는 없습니다.
         다만 Beauty 매출의 외형 회복은 아직 확인되지 않았고 매출채권·재고도 증가했으므로,
         향후에는 <b>Beauty 매출 성장 → 수익성 유지 → 운전자본 효율 → 영업현금흐름 개선</b>이 순차적으로 이어지는지를 확인하는 것이 중요합니다.
         </div>""", unsafe_allow_html=True
@@ -885,10 +942,10 @@ elif page == "종합진단":
             """
             2025년에는 Beauty 사업이 전사 영업이익 감소를 주도했습니다.
             반면 2026년 상반기에는 Beauty 매출이 전년 동기보다 감소했음에도
-            영업이익은 **621억원 → 830억원**, 영업이익률은 약 **3.7% → 5.2%**로 개선됐습니다.
+            영업이익은 621억원 → 830억원, 영업이익률은 약 3.7% → 5.2%로 개선됐습니다.
 
             따라서 향후 핵심은 단순히 Beauty 매출 규모를 다시 키우는 것이 아니라,
-            **어떤 매출이 실제 이익을 만드는지를 구분하면서 성장하는 것**입니다.
+            어떤 매출이 실제 이익을 만드는지를 구분하면서 성장하는 것입니다.
 
             재무 관점에서는 브랜드·제품·채널·지역별로 매출액뿐 아니라
             매출총이익률과 영업이익률을 함께 관리할 필요가 있습니다.
@@ -918,8 +975,8 @@ elif page == "종합진단":
     ):
         st.markdown(
             """
-            2025년 연말 손상검사에서는 **Everlife, FMG&MISSION, The Creme Shop,
-            LG H&H Singapore, 중국 상해법인** 등 일부 현금창출단위의 회수가능액이
+            2025년 연말 손상검사에서는 Everlife, FMG&MISSION, The Creme Shop,
+            LG H&H Singapore, 중국 상해법인 등 일부 현금창출단위의 회수가능액이
             장부금액보다 낮아지면서 손상차손이 인식됐습니다.
 
             이는 손상차손 자체가 현금유출이라는 의미는 아니지만,
@@ -927,7 +984,7 @@ elif page == "종합진단":
             충분히 인정하기 어려워졌다는 회계적 신호입니다.
 
             따라서 해외사업의 성과를 단순 매출 성장률이나 시장 진출 여부로 평가하기보다
-            **사업계획 대비 실제 매출·영업이익·현금흐름이 얼마나 달성되고 있는지**
+            사업계획 대비 실제 매출·영업이익·현금흐름이 얼마나 달성되고 있는지
             정기적으로 검증할 필요가 있습니다.
 
             특히 추가 투자나 지분 확대를 결정하기 전에는
@@ -937,8 +994,8 @@ elif page == "종합진단":
 
             또한 2025년에는 1~3분기까지 대규모 무형자산손상차손이 없었고
             연말 손상검사에서 손상이 집중적으로 인식됐습니다.
-            따라서 **2026년 상반기 손상차손이 0이라는 사실만으로
-            해외 투자자산의 가치가 회복됐다고 판단해서는 안 됩니다.**
+            따라서 2026년 상반기 손상차손이 0이라는 사실만으로
+            해외 투자자산의 가치가 회복됐다고 판단해서는 안 됩니다.
             실제 판단은 2026년 연말 손상검사와 각 CGU의 사업실적을 함께 확인해야 합니다.
             """
         )
@@ -962,7 +1019,7 @@ elif page == "종합진단":
         st.markdown(
             """
             2025년 손상검사에서는 해외 CGU뿐 아니라
-            **국내 화장품사업부문에서 단종 브랜드와 관련된 손상차손도 인식**됐습니다.
+            국내 화장품사업부문에서 단종 브랜드와 관련된 손상차손도 인식됐습니다.
             이는 모든 브랜드를 동일한 방식으로 유지하기보다,
             각 브랜드가 실제로 만들어내는 경제적 성과를 기준으로
             포트폴리오를 재정비할 필요가 있음을 보여줍니다.
@@ -980,7 +1037,7 @@ elif page == "종합진단":
             글로벌 유통과 마케팅 투자를 집중하는 방식이 필요합니다.
 
             이런 방식은 단순한 비용절감이 아니라
-            **한정된 자원을 더 높은 수익을 만드는 브랜드로 이동시키는 자원배분의 문제**입니다.
+            한정된 자원을 더 높은 수익을 만드는 브랜드로 이동시키는 자원배분의 문제입니다.
             """
         )
 
@@ -1005,13 +1062,13 @@ elif page == "종합진단":
             2025년에는 당기순손실이 발생했지만 영업활동현금흐름은 여전히 양(+)을 유지했습니다.
             이는 손상차손처럼 현금유출을 직접 수반하지 않는 비용이 손익에 반영됐기 때문입니다.
 
-            다만 영업활동현금흐름은 2023년 약 **6,591억원 → 2024년 5,276억원
-            → 2025년 4,464억원**으로 감소했습니다.
+            다만 영업활동현금흐름은 2023년 약 6,591억원 → 2024년 5,276억원
+            → 2025년 4,464억원으로 감소했습니다.
             따라서 회계상 적자와 현금창출력을 구분하는 것과 별개로,
             본업에서 만들어내는 현금의 규모가 약해지고 있었는지는 계속 확인해야 합니다.
 
             또한 2026년 상반기에는 수익성이 개선됐지만
-            2025년 말 대비 **매출채권 및 기타채권과 재고자산이 증가**했습니다.
+            2025년 말 대비 매출채권 및 기타채권과 재고자산이 증가했습니다.
             매출채권 회수가 느려지거나 판매보다 재고 증가가 빠르면
             손익계산서상 이익이 개선돼도 실제 현금은 운전자본에 묶일 수 있습니다.
 
